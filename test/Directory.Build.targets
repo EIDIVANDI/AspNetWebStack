@@ -1,0 +1,12 @@
+<Project>
+  <Import Project="..\Directory.Build.targets"/>
+  <Import Project="..\packages\**\xunit.runner.msbuild.props"/>
+
+  <Target Name="Test">
+    <ItemGroup Condition=" '@(TestAssembly)' == '' ">
+      <TestAssembly Include="$(TargetPath)"/>
+    </ItemGroup>
+
+    <xunit Assemblies="@(TestAssembly)" Condition="$(IsTestProject)"/>
+  </Target>
+</Project>

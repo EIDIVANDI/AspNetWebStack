@@ -286,10 +286,8 @@ namespace System.Web.Http.WebHost
             Assert.Equal(inputStreamMessage, result);
         }
 
-        [Theory]
-        [InlineData(ReadEntityBodyMode.None)]
-        [InlineData(ReadEntityBodyMode.Bufferless)]
-        public async Task ConvertRequest_DoesLazyGetBufferlessInputStream_IfRequestStreamHasNotBeenRead(ReadEntityBodyMode readEntityBodyMode)
+        [Fact]
+        public async Task ConvertRequest_DoesLazyGetBufferlessInputStream_IfRequestStreamHasNotBeenRead()
         {
             // Arrange
             bool inputStreamCalled = false;
@@ -404,8 +402,7 @@ namespace System.Web.Http.WebHost
             {
                 // Assert
                 HttpRequestContext context = expectedRequest.GetRequestContext();
-                Assert.IsType<WebHostHttpRequestContext>(context);
-                WebHostHttpRequestContext typedContext = (WebHostHttpRequestContext)context;
+                WebHostHttpRequestContext typedContext = Assert.IsType<WebHostHttpRequestContext>(context);
                 Assert.Same(contextBase, typedContext.Context);
                 Assert.Same(requestBase, typedContext.WebRequest);
                 Assert.Same(expectedRequest, typedContext.Request);
@@ -447,8 +444,10 @@ namespace System.Web.Http.WebHost
         public async Task ProcessRequestAsync_DisposesRequestAndResponse()
         {
             // Arrange
+            Mock<HttpResponseBase> responseMock = new Mock<HttpResponseBase>() { DefaultValue = DefaultValue.Mock };
+            responseMock.SetupGet(r => r.OutputStream).Returns(Stream.Null);
             Mock<HttpContextBase> contextMock = new Mock<HttpContextBase>() { DefaultValue = DefaultValue.Mock };
-            contextMock.SetupGet((hcb) => hcb.Response.OutputStream).Returns(Stream.Null);
+            contextMock.SetupGet(hcb => hcb.Response).Returns(responseMock.Object);
             IDictionary items = new Dictionary<object, object>();
             contextMock.SetupGet((hcb) => hcb.Items).Returns(items);
             HttpContextBase context = contextMock.Object;
@@ -481,8 +480,10 @@ namespace System.Web.Http.WebHost
         public async Task ProcessRequestAsync_DisposesRequestAndResponseWithContent()
         {
             // Arrange
+            Mock<HttpResponseBase> responseMock = new Mock<HttpResponseBase>() { DefaultValue = DefaultValue.Mock };
+            responseMock.SetupGet(r => r.OutputStream).Returns(Stream.Null);
             Mock<HttpContextBase> contextMock = new Mock<HttpContextBase>() { DefaultValue = DefaultValue.Mock };
-            contextMock.SetupGet((hcb) => hcb.Response.OutputStream).Returns(Stream.Null);
+            contextMock.SetupGet(hcb => hcb.Response).Returns(responseMock.Object);
             IDictionary items = new Dictionary<object, object>();
             contextMock.SetupGet((hcb) => hcb.Items).Returns(items);
             HttpContextBase context = contextMock.Object;
@@ -515,8 +516,10 @@ namespace System.Web.Http.WebHost
         public async Task ProcessRequestAsync_IfHandlerFaults_DisposesRequest()
         {
             // Arrange
+            Mock<HttpResponseBase> responseMock = new Mock<HttpResponseBase>();
+            responseMock.SetupGet(r => r.OutputStream).Returns(Stream.Null);
             Mock<HttpContextBase> contextMock = new Mock<HttpContextBase>() { DefaultValue = DefaultValue.Mock };
-            contextMock.SetupGet((hcb) => hcb.Response.OutputStream).Returns(Stream.Null);
+            contextMock.SetupGet(hcb => hcb.Response).Returns(responseMock.Object);
             IDictionary items = new Dictionary<object, object>();
             contextMock.SetupGet((hcb) => hcb.Items).Returns(items);
             HttpContextBase context = contextMock.Object;
@@ -546,32 +549,42 @@ namespace System.Web.Http.WebHost
         public void SuppressFormsAuthenticationRedirect_DoesntRequireSuppressRedirect()
         {
             // Arrange
+            Mock<HttpResponseBase> responseMock = new Mock<HttpResponseBase>();
+            responseMock.SetupGet(r => r.StatusCode).Returns(200);
+            responseMock.SetupSet(r => r.SuppressFormsAuthenticationRedirect = It.IsAny<bool>()).Verifiable();
             Mock<HttpContextBase> contextMock = new Mock<HttpContextBase>() { DefaultValue = DefaultValue.Mock };
             IDictionary contextItems = new Hashtable();
-            contextMock.SetupGet(hcb => hcb.Response.StatusCode).Returns(200);
+            contextMock.SetupGet(hcb => hcb.Response).Returns(responseMock.Object);
             contextMock.SetupGet(hcb => hcb.Items).Returns(contextItems);
 
             // Act
             HttpControllerHandler.EnsureSuppressFormsAuthenticationRedirect(contextMock.Object);
 
             // Assert
-            Assert.False(contextMock.Object.Response.SuppressFormsAuthenticationRedirect);
+            responseMock.VerifySet(r => r.SuppressFormsAuthenticationRedirect = It.IsAny<bool>(), Times.Never);
         }
 
         [Fact]
         public void SuppressFormsAuthenticationRedirect_RequireSuppressRedirect()
         {
             // Arrange
+            bool suppressFormsAuthenticationRedirect = false;
+            Mock<HttpResponseBase> responseMock = new Mock<HttpResponseBase>();
+            responseMock.SetupGet(r => r.StatusCode).Returns(401);
+            responseMock.SetupSet<bool>(r => r.SuppressFormsAuthenticationRedirect = It.IsAny<bool>())
+                .Callback(value => suppressFormsAuthenticationRedirect = value)
+                .Verifiable();
             Mock<HttpContextBase> contextMock = new Mock<HttpContextBase>() { DefaultValue = DefaultValue.Mock };
             IDictionary contextItems = new Hashtable();
-            contextMock.SetupGet(hcb => hcb.Response.StatusCode).Returns(401);
+            contextMock.SetupGet(hcb => hcb.Response).Returns(responseMock.Object);
             contextMock.SetupGet(hcb => hcb.Items).Returns(contextItems);
 
             // Act
             HttpControllerHandler.EnsureSuppressFormsAuthenticationRedirect(contextMock.Object);
 
             // Assert
-            Assert.True(contextMock.Object.Response.SuppressFormsAuthenticationRedirect);
+            responseMock.VerifySet(r => r.SuppressFormsAuthenticationRedirect = It.IsAny<bool>(), Times.Once);
+            Assert.True(suppressFormsAuthenticationRedirect);
         }
 
         [Fact]
@@ -597,8 +610,8 @@ namespace System.Web.Http.WebHost
             }
 
             // Assert
-            Assert.Equal<int>((int)HttpStatusCode.OK, responseBase.StatusCode);
-            Assert.True(responseBase.Headers["Content-Type"].StartsWith(JsonMediaTypeFormatter.DefaultMediaType.MediaType));
+            Assert.Equal((int)HttpStatusCode.OK, responseBase.StatusCode);
+            Assert.StartsWith(JsonMediaTypeFormatter.DefaultMediaType.MediaType, responseBase.Headers["Content-Type"]);
             Assert.Equal("\"hello\"", responseString);
         }
 
@@ -756,8 +769,8 @@ namespace System.Web.Http.WebHost
             }
 
             // Assert
-            Assert.Equal<int>((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
-            Assert.True(responseBase.Headers["Content-Type"].StartsWith(JsonMediaTypeFormatter.DefaultMediaType.MediaType));
+            Assert.Equal((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
+            Assert.StartsWith(JsonMediaTypeFormatter.DefaultMediaType.MediaType, responseBase.Headers["Content-Type"]);
             Assert.Equal("An error has occurred.", httpError["Message"]);
             Assert.Equal("The 'ObjectContent`1' type failed to serialize the response body for content type 'application/json; charset=utf-8'.", httpError["ExceptionMessage"]);
             Assert.Equal(typeof(InvalidOperationException).FullName, httpError["ExceptionType"]);
@@ -804,8 +817,8 @@ namespace System.Web.Http.WebHost
             }
 
             // Assert
-            Assert.Equal<int>((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
-            Assert.True(responseBase.Headers["Content-Type"].StartsWith(JsonMediaTypeFormatter.DefaultMediaType.MediaType));
+            Assert.Equal((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
+            Assert.StartsWith(JsonMediaTypeFormatter.DefaultMediaType.MediaType, responseBase.Headers["Content-Type"]);
             Assert.Equal("An error has occurred.", httpError["Message"]);
             Assert.Equal("The 'ObjectContent`1' type failed to serialize the response body for content type 'application/json; charset=utf-8'.", httpError["ExceptionMessage"]);
             Assert.Equal(typeof(InvalidOperationException).FullName, httpError["ExceptionType"]);
@@ -845,7 +858,7 @@ namespace System.Web.Http.WebHost
             memoryStream.Seek(0L, SeekOrigin.Begin);
 
             // Assert
-            Assert.Equal<int>((int)errorResponse.StatusCode, responseBase.StatusCode);
+            Assert.Equal((int)errorResponse.StatusCode, responseBase.StatusCode);
             Assert.Equal(0, memoryStream.Length);
             Assert.Equal("myValue", responseBase.Headers["myHeader"]);
             Assert.Null(responseBase.Headers["Content-Type"]);
@@ -887,8 +900,8 @@ namespace System.Web.Http.WebHost
             }
 
             // Assert
-            Assert.Equal<int>((int)errorResponse.StatusCode, responseBase.StatusCode);
-            Assert.True(responseBase.Headers["Content-Type"].StartsWith("application/fake"));
+            Assert.Equal((int)errorResponse.StatusCode, responseBase.StatusCode);
+            Assert.StartsWith("application/fake", responseBase.Headers["Content-Type"]);
             Assert.Equal("user message", responseContent);
             Assert.Equal("myValue", responseBase.Headers["myHeader"]);
         }
@@ -930,7 +943,7 @@ namespace System.Web.Http.WebHost
                 exceptionHandler, CancellationToken.None);
 
             // Assert
-            Assert.Equal<int>((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
+            Assert.Equal((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
             Assert.Equal(0, memoryStream.Length);
             Assert.Null(responseBase.Headers["Content-Type"]);
         }
@@ -970,7 +983,7 @@ namespace System.Web.Http.WebHost
                 exceptionHandler, CancellationToken.None);
 
             // Assert
-            Assert.Equal<int>((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
+            Assert.Equal((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
             Assert.Equal(0, memoryStream.Length);
             Assert.Null(responseBase.Headers["Content-Type"]);
         }
@@ -1022,7 +1035,7 @@ namespace System.Web.Http.WebHost
                 exceptionHandler, CancellationToken.None);
 
             // Assert
-            Assert.Equal<int>((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
+            Assert.Equal((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
             Assert.Equal(0, memoryStream.Length);
             Assert.Null(responseBase.Headers["Content-Type"]);
         }
@@ -1063,7 +1076,7 @@ namespace System.Web.Http.WebHost
                 exceptionHandler, CancellationToken.None);
 
             // Assert
-            Assert.Equal<int>((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
+            Assert.Equal((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
             Assert.Equal(0, memoryStream.Length);
             Assert.Null(responseBase.Headers["Content-Type"]);
         }
@@ -1081,7 +1094,7 @@ namespace System.Web.Http.WebHost
             await CopyResponseAsync(contextMock.Object, request: new HttpRequestMessage(), response: null);
 
             // Assert
-            Assert.Equal<int>((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
+            Assert.Equal((int)HttpStatusCode.InternalServerError, responseBase.StatusCode);
             Assert.Equal(0, memoryStream.Length);
             Assert.Null(responseBase.Headers["Content-Type"]);
         }
@@ -1374,7 +1387,7 @@ namespace System.Web.Http.WebHost
 
                 Assert.Same(expectedException, exception);
                 Assert.NotNull(exception.StackTrace);
-                Assert.True(exception.StackTrace.StartsWith(expectedStackTrace));
+                Assert.StartsWith(expectedStackTrace, exception.StackTrace);
             }
         }
 

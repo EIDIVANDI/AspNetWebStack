@@ -8,6 +8,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TestCommon;
+#if NETFX_CORE
+using NameValueCollection = System.Net.Http.Formatting.HttpValueCollection;
+#endif
 
 namespace System.Net.Http
 {
@@ -53,7 +56,6 @@ namespace System.Net.Http
                     "a+c=d+e",
                     "n1=v1&n2=v2",
                     "n1=v1a+v1b&n2=v2a+v2b",
-                    "N=%c3%a6%c3%b8%c3%a5",
                 };
             }
         }
@@ -137,6 +139,21 @@ namespace System.Net.Http
             Assert.Equal(formData, data.ToString());
         }
 
+        [Fact]
+        public async Task ReadAsFormDataAsync_HandlesFormData_Encoded()
+        {
+            // Arrange
+            string formData = "N=%c3%a6%c3%b8%c3%a5";
+            HttpContent content = new StringContent(formData);
+            content.Headers.ContentType = MediaTypeConstants.ApplicationFormUrlEncodedMediaType;
+
+            // Act
+            NameValueCollection data = await content.ReadAsFormDataAsync();
+
+            // Assert
+            Assert.Equal(formData, data.ToString(), ignoreCase: true);
+        }
+
         [Theory]
         [PropertyData("IrregularFormData")]
         public async Task ReadAsFormDataAsync_HandlesIrregularFormData(string irregularFormData)
@@ -149,8 +166,8 @@ namespace System.Net.Http
             NameValueCollection data = await content.ReadAsFormDataAsync();
 
             // Assert
-            Assert.Equal(1, data.Count);
-            Assert.Equal(irregularFormData, data.AllKeys[0]);
+            Assert.Single(data);
+            Assert.NotNull(data[irregularFormData]);
         }
 
         [Fact]

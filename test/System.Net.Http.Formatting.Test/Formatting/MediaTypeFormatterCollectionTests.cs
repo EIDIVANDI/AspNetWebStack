@@ -27,23 +27,18 @@ namespace System.Net.Http.Formatting
         public void Constructor()
         {
             MediaTypeFormatterCollection collection = new MediaTypeFormatterCollection();
-#if !NETFX_CORE // No FormUrlEncodedMediaTypeFormatter in portable library version
+
             Assert.Equal(3, collection.Count);
-#else
-            Assert.Equal(2, collection.Count);
-#endif
             Assert.NotNull(collection.XmlFormatter);
             Assert.NotNull(collection.JsonFormatter);
-#if !NETFX_CORE // No FormUrlEncodedMediaTypeFormatter in portable library version
             Assert.NotNull(collection.FormUrlEncodedFormatter);
-#endif
         }
 
         [Fact]
         public void Constructor1_AcceptsEmptyList()
         {
             MediaTypeFormatterCollection collection = new MediaTypeFormatterCollection(new MediaTypeFormatter[0]);
-            Assert.Equal(0, collection.Count);
+            Assert.Empty(collection);
         }
 
         [Theory]
@@ -101,14 +96,11 @@ namespace System.Net.Http.Formatting
             {
                 new XmlMediaTypeFormatter(),
                 new JsonMediaTypeFormatter(),
-#if !NETFX_CORE // No FormUrlEncodedMediaTypeFormatter in portable library version
                 new FormUrlEncodedMediaTypeFormatter(),
-#endif
+
                 new XmlMediaTypeFormatter(),
                 new JsonMediaTypeFormatter(),
-#if !NETFX_CORE // No FormUrlEncodedMediaTypeFormatter in portable library version
                 new FormUrlEncodedMediaTypeFormatter(),
-#endif
             };
 
             MediaTypeFormatterCollection collection = new MediaTypeFormatterCollection(formatters);
@@ -185,7 +177,6 @@ namespace System.Net.Http.Formatting
             Assert.Null(collection.JsonFormatter);
         }
 
-#if !NETFX_CORE // No FormUrlEncodedMediaTypeFormatter in portable library version
         [Fact]
         public void FormUrlEncodedFormatter_SetByCtor()
         {
@@ -200,7 +191,6 @@ namespace System.Net.Http.Formatting
             MediaTypeFormatterCollection collection = new MediaTypeFormatterCollection(new MediaTypeFormatter[0]);
             Assert.Null(collection.FormUrlEncodedFormatter);
         }
-#endif
 
         [Fact]
         public void Remove_SetsXmlFormatter()
@@ -285,6 +275,7 @@ namespace System.Net.Http.Formatting
         public void FindReader_ReturnsFormatterOnMatch(Type variationType, object testData, string mediaType)
         {
             // Arrange
+            GC.KeepAlive(testData); // Mark parameter as used. See xUnit1026, [Theory] method doesn't use all parameters.
             MockMediaTypeFormatter formatter = new MockMediaTypeFormatter() { CallBase = true };
             foreach (string legalMediaType in HttpTestData.LegalMediaTypeStrings)
             {
@@ -345,6 +336,7 @@ namespace System.Net.Http.Formatting
         public void FindWriter_ReturnsFormatterOnMatch(Type variationType, object testData, string mediaType)
         {
             // Arrange
+            GC.KeepAlive(testData); // Mark parameter as used. See xUnit1026, [Theory] method doesn't use all parameters.
             MockMediaTypeFormatter formatter = new MockMediaTypeFormatter() { CallBase = true };
             foreach (string legalMediaType in HttpTestData.LegalMediaTypeStrings)
             {
@@ -371,8 +363,8 @@ namespace System.Net.Http.Formatting
         [InlineData(typeof(byte[]))]
 #if !NETFX_CORE
         [InlineData(typeof(XmlElement))]
-        [InlineData(typeof(FormDataCollection))]
 #endif
+        [InlineData(typeof(FormDataCollection))]
         public void IsTypeExcludedFromValidation_ReturnsTrueForExcludedTypes(Type type)
         {
             Assert.True(MediaTypeFormatterCollection.IsTypeExcludedFromValidation(type));

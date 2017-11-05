@@ -15,8 +15,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\packages\Newtonsoft.Json.6.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -267,7 +268,9 @@
     <Compile Include="Tracing\Tracers\FormatterLoggerTraceWrapper.cs" />
     <Compile Include="Tracing\Tracers\DefaultHttpControllerTypeResolverTracer.cs" />
     <Compile Include="Tracing\Tracers\OverrideFilterTracer.cs" />
+    <Compile Include="Validation\BodyModelValidatorContext.cs" />
     <Compile Include="Validation\IModelValidatorCache.cs" />
+    <Compile Include="Validation\IBodyModelValidatorKeyBuilder.cs" />
     <Compile Include="Validation\ModelValidatorCache.cs" />
     <Compile Include="Controllers\ResponseMessageResultConverter.cs" />
     <Compile Include="Controllers\ValueResultConverter.cs" />
